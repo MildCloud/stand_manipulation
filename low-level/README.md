@@ -24,8 +24,15 @@ Check `legged_gym/legged_gym/utils/helpers.py` for all command line args.
 Only need to specify `--exptid`. The parser will automatically find corresponding runs.
 ```bash
 cd legged_gym/scripts
+```
+```bash
 python play.py --exptid SOME_YOUR_DESCRIPTION --task b1z1 --proj_name b1z1-low --checkpoint 64000 --observe_gait_commands
 ```
+For public checkout point
+```bash
+python play.py --exptid public --task b1z1 --proj_name b1z1-low --observe_gait_commands
+```
+
 Use `--sim_device cpu --rl_device cpu` in case not enough GPU memory.
 
 ## Suggestions
