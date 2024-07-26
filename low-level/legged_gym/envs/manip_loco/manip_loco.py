@@ -1009,7 +1009,7 @@ class ManipLoco(LeggedRobot):
         ee_goal_local_cart = quat_rotate_inverse(self.base_quat, self.curr_ee_goal_cart_world - arm_base_pos)
         if self.stand_by:
             self.commands[:] = 0.
-        
+        # TODO Set the command for envs that (need to stand || currently stand) to 0.
         if self.vel_obs:
             obs_buf = torch.cat((       self.get_body_orientation(),  # dim 2
                                         self.base_ang_vel * self.obs_scales.ang_vel,  # dim 3
@@ -1115,9 +1115,9 @@ class ManipLoco(LeggedRobot):
             Default behaviour: draws height measurement points
         """
         # self.gym.refresh_rigid_body_state_tensor(self.sim)
-        sphere_geom = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(1, 1, 0))
+        sphere_geom = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(1, 1, 0)) # yellow
 
-        sphere_geom_3 = gymutil.WireframeSphereGeometry(0.05, 16, 16, None, color=(0, 1, 1))
+        sphere_geom_3 = gymutil.WireframeSphereGeometry(0.05, 16, 16, None, color=(0, 1, 1)) # cyan
         upper_arm_pose = self.get_ee_goal_spherical_center()
 
         sphere_geom_2 = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(0, 0, 1))
@@ -1126,6 +1126,9 @@ class ManipLoco(LeggedRobot):
         sphere_geom_origin = gymutil.WireframeSphereGeometry(0.1, 8, 8, None, color=(0, 1, 0))
         sphere_pose = gymapi.Transform(gymapi.Vec3(0, 0, 0), r=None)
         gymutil.draw_lines(sphere_geom_origin, self.gym, self.viewer, self.envs[0], sphere_pose)
+
+        sphere_geom_4 = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(1, 0, 1)) # purple
+        sphere_geom_5 = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(0.7, 0.4, 0.4)) # orange
 
         axes_geom = gymutil.AxesGeometry(scale=0.2)
 
@@ -1142,6 +1145,12 @@ class ManipLoco(LeggedRobot):
             pose = gymapi.Transform(gymapi.Vec3(self.curr_ee_goal_cart_world[i, 0], self.curr_ee_goal_cart_world[i, 1], self.curr_ee_goal_cart_world[i, 2]), 
                                     r=gymapi.Quat(self.ee_goal_orn_quat[i, 0], self.ee_goal_orn_quat[i, 1], self.ee_goal_orn_quat[i, 2], self.ee_goal_orn_quat[i, 3]))
             gymutil.draw_lines(axes_geom, self.gym, self.viewer, self.envs[i], pose)
+
+            sphere_pose_4 = gymapi.Transform(gymapi.Vec3(self.final_ee_goal_cart_world[i, 0], self.final_ee_goal_cart_world[i, 1], self.final_ee_goal_cart_world[i, 2]), r=None)
+            gymutil.draw_lines(sphere_geom_4, self.gym, self.viewer, self.envs[i], sphere_pose_4) 
+
+            sphere_pose_5 = gymapi.Transform(gymapi.Vec3(self.final_ee_start_cart_world[i, 0], self.final_ee_start_cart_world[i, 1], self.final_ee_start_cart_world[i, 2]), r=None)
+            gymutil.draw_lines(sphere_geom_5, self.gym, self.viewer, self.envs[i], sphere_pose_5) 
 
     def _draw_ee_goal_traj(self):
         sphere_geom = gymutil.WireframeSphereGeometry(0.005, 8, 8, None, color=(1, 0, 0))
@@ -1285,6 +1294,10 @@ class ManipLoco(LeggedRobot):
                 self.ee_start_sphere[env_ids] = self.ee_goal_sphere[env_ids].clone()
                 for i in range(10):
                     self._resample_ee_goal_sphere_once(env_ids)
+                    # TODO Check whether (need to stand || currently stand) for the newly sampled ee_goal, 
+                    # if so, record the base_quat to base_quat_fix, recenter ee_goal & start, 
+                    # calculate the ee_goal_world using the new center and fixed quat
+                    # FIXME Where and when to use base_quat and base_yaw_quat
                     collision_mask = self.collision_check(env_ids)
                     env_ids = env_ids[collision_mask]
                     if len(env_ids) == 0:
@@ -1311,6 +1324,8 @@ class ManipLoco(LeggedRobot):
         ee_goal_cart_yaw_global = quat_apply(self.base_yaw_quat, self.curr_ee_goal_cart)
         # TODO: add twisting motion by fixing yaw at traj start
         self.curr_ee_goal_cart_world = self.get_ee_goal_spherical_center() + ee_goal_cart_yaw_global
+        self.final_ee_goal_cart_world = self.get_ee_goal_spherical_center() + quat_apply(self.base_yaw_quat, sphere2cart(self.ee_goal_sphere))
+        self.final_ee_start_cart_world = self.get_ee_goal_spherical_center() + quat_apply(self.base_yaw_quat, sphere2cart(self.ee_start_sphere))
         
         default_yaw = torch.atan2(ee_goal_cart_yaw_global[:, 1], ee_goal_cart_yaw_global[:, 0])
         default_pitch = -self.curr_ee_goal_sphere[:, 1] + self.cfg.goal_ee.arm_induced_pitch
@@ -1332,6 +1347,9 @@ class ManipLoco(LeggedRobot):
     def get_ee_goal_spherical_center(self):
         center = torch.cat([self.root_states[:, :2], torch.zeros(self.num_envs, 1, device=self.device)], dim=1)
         center = center + quat_apply(self.base_yaw_quat, self.ee_goal_center_offset)
+        # ee_goal_center_offset = torch.tensor([0.3, 0, 0.09], device=self.device).repeat(self.num_envs, 1)
+        # center = self.root_states[:, :3]
+        # center = center + quat_apply(self.base_quat, ee_goal_center_offset)
         return center
 
     def subscribe_viewer_keyboard_events(self):
@@ -1630,6 +1648,7 @@ class ManipLoco(LeggedRobot):
         return rew, rew
 
     def _reward_walking_dof(self):
+        # TODO duplicate with stand still?
         # Penalize motion at zero commands
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
@@ -1763,6 +1782,7 @@ class ManipLoco(LeggedRobot):
         return dof_error, dof_error
     
     def _reward_tracking_lin_vel_max(self):
+        # encourage forwarding
         rew = torch.where(self.commands[:, 0] > 0, torch.minimum(self.base_lin_vel[:, 0], self.commands[:, 0]) / (self.commands[:, 0] + 1e-5), \
                           torch.minimum(-self.base_lin_vel[:, 0], -self.commands[:, 0]) / (-self.commands[:, 0] + 1e-5))
         zero_cmd_indices = torch.abs(self.commands[:, 0]) < self.cfg.commands.lin_vel_x_clip
