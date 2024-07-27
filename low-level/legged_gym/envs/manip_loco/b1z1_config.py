@@ -46,9 +46,20 @@ class B1Z1RoughCfg( ManipLocoCfg ):
         class ranges(ManipLocoCfg.goal_ee.ranges):
             init_pos_start = [0.5, np.pi/8, 0]
             init_pos_end = [0.7, 0, 0]
+
             pos_l_low = [0.4, 0.95]
             pos_p_low = [-1 * np.pi / 2.5, 1 * np.pi / 3]
             pos_y_low = [-1.2, 1.2]
+            pos_l_high = [0.6, 0.8]
+            pos_p_high = [-1 * np.pi / 6, -1 * np.pi / 12]
+            pos_y_high = [0, 0]
+
+            delta_orn_r_high = [-0.5, 0.5]
+            delta_orn_p_high = [-0.5, 0.5]
+            delta_orn_y_high = [-0.5, 0.5]
+            delta_orn_r_low = [-0.5, 0.5]
+            delta_orn_p_low = [-0.5, 0.5]
+            delta_orn_y_low = [-0.5, 0.5]
 
     class commands:
         curriculum = True

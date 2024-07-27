@@ -587,6 +587,7 @@ class ManipLoco(LeggedRobot):
 
         # box info & target_ee info
         self.sample_heigh_goal = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool).squeeze(-1)
+        self.is_stand = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool).squeeze(-1)
         self.box_pos = self.box_root_state[:, 0:3]
         self.grasp_offset = self.cfg.arm.grasp_offset
         self.init_target_ee_base = torch.tensor(self.cfg.arm.init_target_ee_base, device=self.device).unsqueeze(0)
@@ -1014,7 +1015,8 @@ class ManipLoco(LeggedRobot):
         ee_goal_local_cart = quat_rotate_inverse(self.base_quat, self.curr_ee_goal_cart_world - arm_base_pos)
         if self.stand_by:
             self.commands[:] = 0.
-        # TODO Set the command for envs that (need to stand || currently stand) to 0.
+        self.commands = torch.where(self.sample_heigh_goal[:, None].repeat(1, 3), torch.zeros_like(self.commands), self.commands)
+        self.commands = torch.where(self.is_stand[:, None].repeat(1, 3), torch.zeros_like(self.commands), self.commands)
         if self.vel_obs:
             obs_buf = torch.cat((       self.get_body_orientation(),  # dim 2
                                         self.base_ang_vel * self.obs_scales.ang_vel,  # dim 3
@@ -1273,28 +1275,27 @@ class ManipLoco(LeggedRobot):
         self.ee_goal_sphere_low[env_ids, 0] = torch_rand_float(self.goal_ee_ranges["pos_l_low"][0], self.goal_ee_ranges["pos_l_low"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.ee_goal_sphere_low[env_ids, 1] = torch_rand_float(self.goal_ee_ranges["pos_p_low"][0], self.goal_ee_ranges["pos_p_low"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.ee_goal_sphere_low[env_ids, 2] = torch_rand_float(self.goal_ee_ranges["pos_y_low"][0], self.goal_ee_ranges["pos_y_low"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        low_ee_goal_sphere = torch.tensor([[0.8, -np.pi*3/4, 0.]], device=self.device).repeat(len(env_ids), 1)
+        self.ee_goal_sphere_low[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 3), low_ee_goal_sphere, self.ee_goal_sphere_low[env_ids])
 
     def _resample_ee_goal_sphere_once_high(self, env_ids):
-        self.ee_goal_sphere_high[env_ids, 0] = torch_rand_float(self.goal_ee_ranges["pos_l"][0], self.goal_ee_ranges["pos_l"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.ee_goal_sphere_high[env_ids, 1] = torch_rand_float(self.goal_ee_ranges["pos_p"][0], self.goal_ee_ranges["pos_p"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.ee_goal_sphere_high[env_ids, 2] = torch_rand_float(self.goal_ee_ranges["pos_y"][0], self.goal_ee_ranges["pos_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        base_pitch = euler_from_quat(self.base_quat)[1]
-        heigh_ee_goal_sphere = torch.zeros_like(self.ee_goal_sphere_high)
-        heigh_ee_goal_sphere[env_ids, 0] = torch_rand_float(0.9, 0.9, (len(env_ids), 1), device=self.device).squeeze(1)
-        heigh_ee_goal_sphere[env_ids, 1] = torch_rand_float(np.pi / 2, np.pi / 2, (len(env_ids), 1), device=self.device).squeeze(1)
-        stand_mask = base_pitch[env_ids] > -np.pi / 6
-        self.ee_goal_sphere_high[env_ids] = torch.where(stand_mask[:, None].repeat(1, 3), heigh_ee_goal_sphere[env_ids], self.ee_goal_sphere_high[env_ids])
+        self.ee_goal_sphere_high[env_ids, 0] = torch_rand_float(self.goal_ee_ranges["pos_l_high"][0], self.goal_ee_ranges["pos_l_high"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.ee_goal_sphere_high[env_ids, 1] = torch_rand_float(self.goal_ee_ranges["pos_p_high"][0], self.goal_ee_ranges["pos_p_high"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.ee_goal_sphere_high[env_ids, 2] = torch_rand_float(self.goal_ee_ranges["pos_y_high"][0], self.goal_ee_ranges["pos_y_high"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        heigh_ee_goal_sphere = torch.tensor([[0.9, np.pi/2, 0.]], device=self.device).repeat(len(env_ids), 1)
+        self.ee_goal_sphere_high[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 3), self.ee_goal_sphere_high[env_ids], heigh_ee_goal_sphere)
     
     def _resample_ee_goal_orn_once_low(self, env_ids):
-        ee_goal_delta_orn_r = torch_rand_float(self.goal_ee_ranges["delta_orn_r"][0], self.goal_ee_ranges["delta_orn_r"][1], (len(env_ids), 1), device=self.device)
-        ee_goal_delta_orn_p = torch_rand_float(self.goal_ee_ranges["delta_orn_p"][0], self.goal_ee_ranges["delta_orn_p"][1], (len(env_ids), 1), device=self.device)
-        ee_goal_delta_orn_y = torch_rand_float(self.goal_ee_ranges["delta_orn_y"][0], self.goal_ee_ranges["delta_orn_y"][1], (len(env_ids), 1), device=self.device)
+        ee_goal_delta_orn_r = torch_rand_float(self.goal_ee_ranges["delta_orn_r_high"][0], self.goal_ee_ranges["delta_orn_r_high"][1], (len(env_ids), 1), device=self.device)
+        ee_goal_delta_orn_p = torch_rand_float(self.goal_ee_ranges["delta_orn_p_high"][0], self.goal_ee_ranges["delta_orn_p_high"][1], (len(env_ids), 1), device=self.device)
+        ee_goal_delta_orn_y = torch_rand_float(self.goal_ee_ranges["delta_orn_y_high"][0], self.goal_ee_ranges["delta_orn_y_high"][1], (len(env_ids), 1), device=self.device)
         self.ee_goal_orn_delta_rpy_low[env_ids, :] = torch.cat([ee_goal_delta_orn_r, ee_goal_delta_orn_p, ee_goal_delta_orn_y], dim=-1)
 
     def _resample_ee_goal_orn_once_high(self, env_ids):
-        ee_goal_delta_orn_r = torch_rand_float(self.goal_ee_ranges["delta_orn_r"][0], self.goal_ee_ranges["delta_orn_r"][1], (len(env_ids), 1), device=self.device)
-        ee_goal_delta_orn_p = torch_rand_float(self.goal_ee_ranges["delta_orn_p"][0], self.goal_ee_ranges["delta_orn_p"][1], (len(env_ids), 1), device=self.device)
-        ee_goal_delta_orn_y = torch_rand_float(self.goal_ee_ranges["delta_orn_y"][0], self.goal_ee_ranges["delta_orn_y"][1], (len(env_ids), 1), device=self.device)
+        # Currently not use
+        ee_goal_delta_orn_r = torch_rand_float(self.goal_ee_ranges["delta_orn_r_low"][0], self.goal_ee_ranges["delta_orn_r_low"][1], (len(env_ids), 1), device=self.device)
+        ee_goal_delta_orn_p = torch_rand_float(self.goal_ee_ranges["delta_orn_p_low"][0], self.goal_ee_ranges["delta_orn_p_low"][1], (len(env_ids), 1), device=self.device)
+        ee_goal_delta_orn_y = torch_rand_float(self.goal_ee_ranges["delta_orn_y_low"][0], self.goal_ee_ranges["delta_orn_y_low"][1], (len(env_ids), 1), device=self.device)
         self.ee_goal_orn_delta_rpy_high[env_ids, :] = torch.cat([ee_goal_delta_orn_r, ee_goal_delta_orn_p, ee_goal_delta_orn_y], dim=-1)
     
     def _resample_ee_goal(self, env_ids, is_init=False):
@@ -1312,7 +1313,9 @@ class ManipLoco(LeggedRobot):
                 self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                 self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
             else:
+                self.is_stand = euler_from_quat(self.base_quat)[1] < -np.pi / 6
                 self.sample_heigh_goal[env_ids] = torch.rand(len(env_ids), 1, device=self.device).squeeze(-1) > 0.5
+                # print('is_stand', self.is_stand)
                 # print('sample_heigh_goal', self.sample_heigh_goal)
                 self._resample_ee_goal_orn_once_low(env_ids)
                 self._resample_ee_goal_orn_once_high(env_ids)
