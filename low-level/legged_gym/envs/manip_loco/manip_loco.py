@@ -1308,10 +1308,8 @@ class ManipLoco(LeggedRobot):
         """
         Change the center of the ee_goal_sphere from the arm_base to base and record the quat for those is_stand and sample_high_goal
         """
-        # self.base_quat_fix[env_ids] = self.base_quat[env_ids]
         self.base_quat_fix[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 4), self.base_quat[env_ids], self.base_quat_fix[env_ids])
         self.base_quat_fix[env_ids] = torch.where(self.sample_high_goal[env_ids, None].repeat(1, 4), self.base_quat[env_ids], self.base_quat_fix[env_ids])
-        # self.root_base_fix[env_ids] = self.root_states[env_ids, :3]
         self.root_base_fix[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 3), self.root_states[env_ids, :3], self.root_base_fix[env_ids])
         self.root_base_fix[env_ids] = torch.where(self.sample_high_goal[env_ids, None].repeat(1, 3), self.root_states[env_ids, :3], self.root_base_fix[env_ids])
         ee_goal_cart = sphere2cart(self.ee_goal_sphere[env_ids])
@@ -1322,8 +1320,12 @@ class ManipLoco(LeggedRobot):
     def _compute_ee_start_sphere_from_cur_ee(self, env_ids):
         """Get the spherical coordinate centered at the base of the curr_ee and give that value to ee_start"""
         ee_pose = self.rigid_body_state[env_ids, self.gripper_idx, :3]
-        ee_pose_base = quat_rotate_inverse(self.base_quat_fix[env_ids], (ee_pose - self.root_base_fix[env_ids, :3]))
-        self.ee_start_sphere[env_ids] = cart2sphere(ee_pose_base)
+        print('ee_pose', ee_pose)
+        ee_goal_spherical_center_walk = self.get_ee_goal_spherical_center()
+        ee_pose_base_walk = cart2sphere(quat_rotate_inverse(self.base_yaw_quat[env_ids], (ee_pose - ee_goal_spherical_center_walk[env_ids])))
+        ee_pose_base_stand = cart2sphere(quat_rotate_inverse(self.base_quat_fix[env_ids], (ee_pose - self.root_base_fix[env_ids])))
+        self.ee_start_sphere[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 3), ee_pose_base_stand, ee_pose_base_walk)
+        self.ee_start_sphere[env_ids] = torch.where(self.sample_high_goal[env_ids, None].repeat(1, 3), ee_pose_base_stand, self.ee_start_sphere[env_ids])
 
     def _resample_ee_goal(self, env_ids, is_init=False):
         if self.cfg.env.teleop_mode and is_init:
@@ -1337,19 +1339,20 @@ class ManipLoco(LeggedRobot):
             
             if is_init:
                 print('is_init')
+                self.is_stand[env_ids] = 0
+                self.sample_high_goal[env_ids] = 0
                 self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                 self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                 self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
-                self.sample_high_goal[env_ids] = 0
             else:
-                self.is_stand = euler_from_quat(self.base_quat)[1] < -np.pi / 6
+                self.is_stand[env_ids] = euler_from_quat(self.base_quat[env_ids])[1] < -np.pi / 6
                 self.sample_high_goal[env_ids] = torch.rand(len(env_ids), 1, device=self.device).squeeze(-1) > 0.5
                 # print('is_stand', self.is_stand)
                 print('sample_high_goal', self.sample_high_goal)
                 self._resample_ee_goal_orn_once_low(env_ids)
                 self._resample_ee_goal_orn_once_high(env_ids)
                 self.ee_goal_orn_delta_rpy[env_ids] = torch.where(self.sample_high_goal[env_ids, None].repeat(1, 3), self.ee_goal_orn_delta_rpy_high[env_ids], self.ee_goal_orn_delta_rpy_low[env_ids])
-                self.ee_start_sphere[env_ids] = self.ee_goal_sphere[env_ids].clone()
+                # self.ee_start_sphere[env_ids] = self.ee_goal_sphere[env_ids].clone()
                 for i in range(10):
                     self._resample_ee_goal_sphere_once_low(env_ids)
                     collision_mask = self.collision_check(env_ids)
@@ -1361,6 +1364,7 @@ class ManipLoco(LeggedRobot):
                 self.ee_goal_sphere[init_env_ids] = torch.where(self.sample_high_goal[init_env_ids, None].repeat(1, 3), self.ee_goal_sphere_high[init_env_ids], self.ee_goal_sphere_low[init_env_ids])
                 # print('self.ee_goal_sphere', self.ee_goal_sphere)
                 self._recenter_ee_goal_sphere(init_env_ids)
+                self._compute_ee_start_sphere_from_cur_ee(init_env_ids)
             self.ee_goal_cart[init_env_ids, :] = sphere2cart(self.ee_goal_sphere[init_env_ids, :])
             self.goal_timer[init_env_ids] = 0.0
 
