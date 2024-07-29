@@ -1320,7 +1320,6 @@ class ManipLoco(LeggedRobot):
     def _compute_ee_start_sphere_from_cur_ee(self, env_ids):
         """Get the spherical coordinate centered at the base of the curr_ee and give that value to ee_start"""
         ee_pose = self.rigid_body_state[env_ids, self.gripper_idx, :3]
-        print('ee_pose', ee_pose)
         ee_goal_spherical_center_walk = self.get_ee_goal_spherical_center()
         ee_pose_base_walk = cart2sphere(quat_rotate_inverse(self.base_yaw_quat[env_ids], (ee_pose - ee_goal_spherical_center_walk[env_ids])))
         ee_pose_base_stand = cart2sphere(quat_rotate_inverse(self.base_quat_fix[env_ids], (ee_pose - self.root_base_fix[env_ids])))
@@ -1405,7 +1404,7 @@ class ManipLoco(LeggedRobot):
         default_pitch = -self.curr_ee_goal_sphere[:, 1] + self.cfg.goal_ee.arm_induced_pitch
         ee_goal_orn_quat_low = quat_from_euler_xyz(self.ee_goal_orn_delta_rpy[:, 0] + np.pi / 2, default_pitch + self.ee_goal_orn_delta_rpy[:, 1], self.ee_goal_orn_delta_rpy[:, 2] + default_yaw)
         ee_goal_orn_euler_high = torch.tensor([[np.pi/2, -np.pi/12, 0]], device=self.device).repeat(self.num_envs, 1)
-        ee_goal_orn_quat_high = quat_from_euler_xyz(ee_goal_orn_euler_high[:, 0], ee_goal_orn_euler_high[:, 1], ee_goal_orn_euler_high[:, 2])
+        ee_goal_orn_quat_high = quat_from_euler_xyz(ee_goal_orn_euler_high[:, 0], ee_goal_orn_euler_high[:, 1], euler_from_quat(self.base_quat_fix)[2])
         # Currently use fix ee_goal_orn_quant_high
         self.ee_goal_orn_quat = torch.where(self.sample_high_goal[:, None].repeat(1, 4), ee_goal_orn_quat_high, ee_goal_orn_quat_low)
         self.goal_timer += 1
