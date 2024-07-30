@@ -264,12 +264,18 @@ class ManipLoco(LeggedRobot):
         # self.num_bodies = len(self.body_names)
         # self.num_dofs = len(self.dof_names)
         feet_names = [s for s in self.body_names if self.cfg.asset.foot_name in s]
-        penalized_contact_names = []
-        for name in self.cfg.asset.penalize_contacts_on:
+        penalized_contact_names_low = []
+        for name in self.cfg.asset.penalize_contacts_on_low:
             body_names = [s for s in self.body_names if name in s]
             if len(body_names) == 0:
                 raise Exception('No body found with name {}'.format(name))
-            penalized_contact_names.extend(body_names)
+            penalized_contact_names_low.extend(body_names)
+        penalized_contact_names_high = []
+        for name in self.cfg.asset.penalize_contacts_on_high:
+            body_names = [s for s in self.body_names if name in s]
+            if len(body_names) == 0:
+                raise Exception('No body found with name {}'.format(name))
+            penalized_contact_names_high.extend(body_names)
         termination_contact_names = []
         for name in self.cfg.asset.terminate_after_contacts_on:
             body_names = [s for s in self.body_names if name in s]
@@ -301,7 +307,8 @@ class ManipLoco(LeggedRobot):
         print('num_torques: {}'.format(self.num_torques))
         print('num_dofs: {}'.format(self.num_dofs))
         print('num_bodies: {}'.format(self.num_bodies))
-        print('penalized_contact_names: {}'.format(penalized_contact_names))
+        print('penalized_contact_names_low: {}'.format(penalized_contact_names_low))
+        print('penalized_contact_names_high: {}'.format(penalized_contact_names_high))
         print('termination_contact_names: {}'.format(termination_contact_names))
         print('feet_names: {}'.format(feet_names))
         print(f"EE Gripper index: {self.gripper_idx}")
@@ -392,15 +399,20 @@ class ManipLoco(LeggedRobot):
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], feet_names[i])
 
-        self.penalized_contact_indices = torch.zeros(len(penalized_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
-        for i in range(len(penalized_contact_names)):
-            self.penalized_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], penalized_contact_names[i])
+        self.penalized_contact_indices_low = torch.zeros(len(penalized_contact_names_low), dtype=torch.long, device=self.device, requires_grad=False)
+        for i in range(len(penalized_contact_names_low)):
+            self.penalized_contact_indices_low[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], penalized_contact_names_low[i])
+
+        self.penalized_contact_indices_high = torch.zeros(len(penalized_contact_names_high), dtype=torch.long, device=self.device, requires_grad=False)
+        for i in range(len(penalized_contact_names_high)):
+            self.penalized_contact_indices_high[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], penalized_contact_names_high[i])
 
         self.termination_contact_indices = torch.zeros(len(termination_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
         
-        print('penalized_contact_indices: {}'.format(self.penalized_contact_indices))
+        print('penalized_contact_indices_low: {}'.format(self.penalized_contact_indices_low))
+        print('penalized_contact_indices_high: {}'.format(self.penalized_contact_indices_high))
         print('termination_contact_indices: {}'.format(self.termination_contact_indices))
         print('feet_indices: {}'.format(self.feet_indices))
 
@@ -1653,16 +1665,24 @@ class ManipLoco(LeggedRobot):
         return rew, lin_vel_y_error
     
     def _reward_lin_vel_z(self):
-        rew = torch.square(self.base_lin_vel[:, 2])
+        rew_low = torch.square(self.base_lin_vel[:, 2])
+        rew_high = torch.square(self.base_lin_vel[:, 1])
+        rew = torch.where(self.is_stand, rew_high, rew_low)
+        rew = torch.where(self.sample_high_goal, rew_high, rew)
         return rew, rew
     
     def _reward_ang_vel_xy(self):
-        rew = torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
+        rew_low = torch.sum(torch.square(self.base_ang_vel[:, :2]))
+        rew_high = torch.sum(torch.square(self.base_ang_vel[:, 2]))
+        rew = torch.where(self.is_stand, rew_high, rew_low)
+        rew = torch.where(self.sample_high_goal, rew_high, rew)
         return rew, rew
     
     def _reward_tracking_ang_vel(self):
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma), ang_vel_error
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma))
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
+        return rew, rew
     
     def _reward_tracking_ang_pitch_vel(self):
         if not self.pitch_control:
@@ -1715,7 +1735,10 @@ class ManipLoco(LeggedRobot):
         return rew, rew
     
     def _reward_collision(self):
-        rew = torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalized_contact_indices, :], dim=-1) > 0.1), dim=1)
+        rew_low = torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalized_contact_indices_low, :], dim=-1) > 0.1), dim=1)
+        rew_high = torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalized_contact_indices_high, :], dim=-1) > 0.1), dim=1)
+        rew = torch.where(self.is_stand, rew_high, rew_low)
+        rew = torch.where(self.sample_high_goal, rew_high, rew)
         return rew, rew
         
     def _reward_stand_still(self):
@@ -1723,6 +1746,8 @@ class ManipLoco(LeggedRobot):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[self.get_walking_cmd_mask()] = 0.
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
         # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew, rew
 
@@ -1732,6 +1757,8 @@ class ManipLoco(LeggedRobot):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[~self.get_walking_cmd_mask()] = 0.
+        rew = torch.where(self.is_stand, torch.ones(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.sample_high_goal, torch.ones(self.num_envs, device=self.device), rew)
         # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew, rew
 
@@ -1773,12 +1800,16 @@ class ManipLoco(LeggedRobot):
         # Penalize non flat base orientation
         roll = self.get_body_orientation()[:, 0]
         error = torch.abs(roll)
+        error = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), error)
         return error, error
     
     def _reward_base_height(self):
         # Penalize base height away from target
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1), dim=1)
-        return torch.abs(base_height - self.cfg.rewards.base_height_target), base_height
+        base_height_error_high = torch.abs(base_height - self.cfg.rewards.base_height_target_high)
+        base_height_error_low = torch.abs(base_height - self.cfg.rewards.base_height_target_low)
+        rew = torch.where(self.sample_high_goal, base_height_error_high, base_height_error_low)
+        return rew, base_height
     
     def _reward_orientation_walking(self):
         reward, metric = self._reward_orientation()
@@ -1867,6 +1898,8 @@ class ManipLoco(LeggedRobot):
         zero_cmd_indices = torch.abs(self.commands[:, 0]) < self.cfg.commands.lin_vel_x_clip
         rew[zero_cmd_indices] = torch.exp(-torch.abs(self.base_lin_vel[:, 0]))[zero_cmd_indices]
         # rew[zero_cmd_indices] = -torch.abs(self.base_lin_vel[:, 0])[zero_cmd_indices]
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
         return rew, rew
     
     def _reward_penalty_lin_vel_y(self):

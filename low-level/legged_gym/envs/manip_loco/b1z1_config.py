@@ -130,7 +130,8 @@ class B1Z1RoughCfg( ManipLocoCfg ):
         foot_name = "foot"
         gripper_name = "ee_gripper_link" #"gripperMover"
         # gripper_name = "wx250s/ee_gripper_link" # for two finger gripper
-        penalize_contacts_on = ["thigh", "trunk", "calf"]
+        penalize_contacts_on_low = ["thigh", "trunk", "calf"]
+        penalize_contacts_on_high = ["thigh", "trunk"]
         terminate_after_contacts_on = []
   
     class rewards ( ManipLocoCfg.rewards ):
@@ -159,8 +160,10 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             # tracking_ang_pitch_vel = 0.5 # New reward, only useful when pitch_control = True
 
             # common rewards
-            feet_air_time = 1.0
-            feet_height = 1.0
+            # feet_air_time = 1.0
+            feet_air_time = 0.
+            # feet_height = 1.0
+            feet_height = 0.
             ang_vel_xy = -0.2 # -0.1
             dof_acc = -7.5e-7 #-2.5e-7
             collision = -10.
@@ -168,8 +171,10 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             dof_pos_limits = -10.0
             hip_pos = -0.3
             feet_jerk = -0.0002
-            feet_drag = -0.08
-            feet_contact_forces = -0.001
+            # feet_drag = -0.08
+            feet_drag = 0.
+            # feet_contact_forces = -0.001
+            feet_contact_forces = 0.
             orientation = 0.0
             orientation_walking = 0.0
             orientation_standing = 0.0
@@ -181,7 +186,8 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             base_height_walking = 0.0
             base_height_standing = 0.0
             penalty_lin_vel_y = 0.#-10.
-        base_height_target = 0.55
+        base_height_target_low = 0.55
+        base_height_target_high = 0.8
         class arm_scales:
             arm_termination = None
             tracking_ee_sphere = 0.
