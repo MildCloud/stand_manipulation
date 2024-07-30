@@ -1302,7 +1302,7 @@ class ManipLoco(LeggedRobot):
         self.ee_goal_sphere_high[env_ids, 0] = torch_rand_float(self.goal_ee_ranges["pos_l_high"][0], self.goal_ee_ranges["pos_l_high"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.ee_goal_sphere_high[env_ids, 1] = torch_rand_float(self.goal_ee_ranges["pos_p_high"][0], self.goal_ee_ranges["pos_p_high"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.ee_goal_sphere_high[env_ids, 2] = torch_rand_float(self.goal_ee_ranges["pos_y_high"][0], self.goal_ee_ranges["pos_y_high"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        heigh_ee_goal_sphere = torch.tensor([[0.9, np.pi/2, 0.]], device=self.device).repeat(len(env_ids), 1)
+        heigh_ee_goal_sphere = torch.tensor([[1.0, np.pi/2, 0.]], device=self.device).repeat(len(env_ids), 1)
         self.ee_goal_sphere_high[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 3), self.ee_goal_sphere_high[env_ids], heigh_ee_goal_sphere)
     
     def _resample_ee_goal_orn_once_low(self, env_ids):
@@ -1351,7 +1351,7 @@ class ManipLoco(LeggedRobot):
             init_env_ids = env_ids.clone()
             
             if is_init:
-                print('is_init')
+                # print('is_init')
                 self.is_stand[env_ids] = 0
                 self.sample_high_goal[env_ids] = 0
                 self.ee_goal_orn_delta_rpy[env_ids, :] = 0
@@ -1361,7 +1361,7 @@ class ManipLoco(LeggedRobot):
                 self.is_stand[env_ids] = euler_from_quat(self.base_quat[env_ids])[1] < -np.pi / 6
                 self.sample_high_goal[env_ids] = torch.rand(len(env_ids), 1, device=self.device).squeeze(-1) > 0.5
                 # print('is_stand', self.is_stand)
-                print('sample_high_goal', self.sample_high_goal)
+                # print('sample_high_goal', self.sample_high_goal)
                 self._resample_ee_goal_orn_once_low(env_ids)
                 self._resample_ee_goal_orn_once_high(env_ids)
                 self.ee_goal_orn_delta_rpy[env_ids] = torch.where(self.sample_high_goal[env_ids, None].repeat(1, 3), self.ee_goal_orn_delta_rpy_high[env_ids], self.ee_goal_orn_delta_rpy_low[env_ids])
@@ -1680,8 +1680,8 @@ class ManipLoco(LeggedRobot):
     
     def _reward_tracking_ang_vel(self):
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma))
-        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma))
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
         return rew, rew
     
     def _reward_tracking_ang_pitch_vel(self):
@@ -1746,8 +1746,8 @@ class ManipLoco(LeggedRobot):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[self.get_walking_cmd_mask()] = 0.
-        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), rew)
-        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
         # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew, rew
 
@@ -1800,7 +1800,7 @@ class ManipLoco(LeggedRobot):
         # Penalize non flat base orientation
         roll = self.get_body_orientation()[:, 0]
         error = torch.abs(roll)
-        error = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), error)
+        error = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), error)
         return error, error
     
     def _reward_base_height(self):
@@ -1898,8 +1898,8 @@ class ManipLoco(LeggedRobot):
         zero_cmd_indices = torch.abs(self.commands[:, 0]) < self.cfg.commands.lin_vel_x_clip
         rew[zero_cmd_indices] = torch.exp(-torch.abs(self.base_lin_vel[:, 0]))[zero_cmd_indices]
         # rew[zero_cmd_indices] = -torch.abs(self.base_lin_vel[:, 0])[zero_cmd_indices]
-        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), rew)
-        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
         return rew, rew
     
     def _reward_penalty_lin_vel_y(self):
@@ -1928,3 +1928,25 @@ class ManipLoco(LeggedRobot):
         height_coeff = 1.0
         rew = torch.exp(-height_coeff*tracking_error)
         return rew, rew
+
+    def _reward_stand_up_x(self):
+        self.forward_vec = to_torch([1., 0., 0.], device=self.device).repeat((self.num_envs, 1))
+        body_x_in_world = quat_rotate(self.base_quat, self.forward_vec)
+        body_x_in_world_z= body_x_in_world[:, 2]
+        rew= torch.where(self.is_stand, to_torch(body_x_in_world_z), torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
+        rew= torch.where(self.sample_high_goal, to_torch(body_x_in_world_z), rew)
+        torch.clip(rew, min = -0.7)
+        return rew, rew
+    
+    def _reward_flfr_footforce(self):
+        feet_force = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
+        self.forward_vec = to_torch([1., 0., 0.], device=self.device).repeat((self.num_envs, 1))
+        body_x_in_world = quat_rotate(self.base_quat, self.forward_vec)
+        body_x_in_world_z= body_x_in_world[:, 2]
+        mask = torch.where(body_x_in_world_z > 0.6, 1., 0.3)
+        contact = (feet_force[:, 0] + feet_force[:, 1]) > 0.1
+        rew = torch.where(contact, 
+                          torch.ones(self.num_envs, device=self.device, dtype=torch.float), 
+                          torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
+        rew = torch.where(self.sample_high_goal, rew, torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
+        return mask*rew, mask*rew
