@@ -1673,7 +1673,8 @@ class ManipLoco(LeggedRobot):
     
     def _reward_ang_vel_xy(self):
         rew_low = torch.sum(torch.square(self.base_ang_vel[:, :2]))
-        rew_high = torch.sum(torch.square(self.base_ang_vel[:, 2]))
+        # rew_high = torch.sum(torch.square(self.base_ang_vel[:, 2]))
+        rew_high = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         rew = torch.where(self.is_stand, rew_high, rew_low)
         rew = torch.where(self.sample_high_goal, rew_high, rew)
         return rew, rew
