@@ -49,10 +49,6 @@ class ManipLocoCfg( LeggedRobotCfg ):
             y_offset = 0 # Relative to base
             z_invariant_offset = 0.53 # Relative to terrain
 
-        class sphere_center_stand:
-            x_offset = 0.3
-            y_offset = 0
-            z_offset = 0.09
 
         # l_schedule = [0, 1]
         # p_schedule = [0, 1]

@@ -43,6 +43,11 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             y_offset = 0 # Relative to base
             z_invariant_offset = 0.7 # Relative to terrain
         
+        class sphere_center_stand:
+            x_offset = 0.3
+            y_offset = 0
+            z_offset = 0.09
+        
         class ranges(ManipLocoCfg.goal_ee.ranges):
             init_pos_start = [0.5, np.pi/8, 0]
             init_pos_end = [0.7, 0, 0]
