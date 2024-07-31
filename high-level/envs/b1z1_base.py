@@ -1188,6 +1188,7 @@ class B1Z1Base(RewardVecTask):
             
             # suddenly want to stop
             suddenstop_indices = (self.gait_wait_timer > 0) | ((~is_walking) & (self.is_walking))
+            suddenstop_indices = suddenstop_indices.to(torch.int64)
             if len(self.gait_indices[suddenstop_indices]) > 0:     
                 self.gait_indices[suddenstop_indices] += 1
             overdue_indices = self.gait_wait_timer >= GAIT_WAIT_TIME
