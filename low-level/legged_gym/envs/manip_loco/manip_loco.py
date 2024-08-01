@@ -1295,7 +1295,7 @@ class ManipLoco(LeggedRobot):
         self.ee_goal_sphere_low[env_ids, 0] = torch_rand_float(self.goal_ee_ranges["pos_l_low"][0], self.goal_ee_ranges["pos_l_low"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.ee_goal_sphere_low[env_ids, 1] = torch_rand_float(self.goal_ee_ranges["pos_p_low"][0], self.goal_ee_ranges["pos_p_low"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.ee_goal_sphere_low[env_ids, 2] = torch_rand_float(self.goal_ee_ranges["pos_y_low"][0], self.goal_ee_ranges["pos_y_low"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        low_ee_goal_sphere = torch.tensor([[0.8, -np.pi*3/4, 0.]], device=self.device).repeat(len(env_ids), 1)
+        low_ee_goal_sphere = torch.tensor([[0.8, -np.pi/3, 0.]], device=self.device).repeat(len(env_ids), 1)
         self.ee_goal_sphere_low[env_ids] = torch.where(self.is_stand[env_ids, None].repeat(1, 3), low_ee_goal_sphere, self.ee_goal_sphere_low[env_ids])
 
     def _resample_ee_goal_sphere_once_high(self, env_ids):
