@@ -183,7 +183,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             orientation = 0.0
             orientation_walking = 0.0
             orientation_standing = 0.0
-            base_height = -5.0
+            base_height = -10.0
             torques_walking = 0.0
             torques_standing = 0.0
             energy_square_walking = 0.0
