@@ -1936,7 +1936,7 @@ class ManipLoco(LeggedRobot):
         body_x_in_world = quat_rotate(self.base_quat, self.forward_vec)
         body_x_in_world_z= body_x_in_world[:, 2]
         # rew= torch.where(self.is_stand, to_torch(body_x_in_world_z), torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
-        rew= torch.where(self.sample_high_goal, to_torch(body_x_in_world_z), rew)
+        rew= torch.where(self.sample_high_goal, to_torch(body_x_in_world_z), torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
         torch.clip(rew, min = -0.7)
         return rew, rew
     
