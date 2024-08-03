@@ -1359,9 +1359,10 @@ class ManipLoco(LeggedRobot):
                 self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
             else:
                 self.is_stand[env_ids] = euler_from_quat(self.base_quat[env_ids])[1] < -np.pi / 6
-                self.sample_high_goal[env_ids] = torch.rand(len(env_ids), 1, device=self.device).squeeze(-1) > 0.5
-                if self.global_steps < 12500 * 24:
-                    self.sample_high_goal[env_ids] = 0
+                self.sample_high_goal[env_ids] = 1
+                # self.sample_high_goal[env_ids] = torch.rand(len(env_ids), 1, device=self.device).squeeze(-1) > 0.5
+                # if self.global_steps < 12500 * 24:
+                #     self.sample_high_goal[env_ids] = 0
                 # print('is_stand', self.is_stand)
                 # print('sample_high_goal', self.sample_high_goal)
                 self._resample_ee_goal_orn_once_low(env_ids)
