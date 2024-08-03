@@ -38,7 +38,7 @@ from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from legged_gym.envs import *
 from legged_gym.utils import get_args, task_registry
 import torch
-import wandb
+# import wandb
 
 def train(args):
     log_pth = LEGGED_GYM_ROOT_DIR + "/logs/{}/".format(args.proj_name) + args.exptid
@@ -53,10 +53,10 @@ def train(args):
         args.num_envs = 128
     else:
         mode = "online"
-    wandb.init(project=args.proj_name, name=args.exptid, mode=mode, dir=LEGGED_GYM_ROOT_DIR + "/logs")
-    wandb.save(LEGGED_GYM_ENVS_DIR + "/manip_loco/b1z1_config.py", policy="now")
-    wandb.save(LEGGED_GYM_ENVS_DIR + "/manip_loco/manip_loco.py", policy="now")
-    wandb.save(LEGGED_GYM_ENVS_DIR + "/manip_loco/manip_loco_config.py", policy="now")
+    # wandb.init(project=args.proj_name, name=args.exptid, mode=mode, dir=LEGGED_GYM_ROOT_DIR + "/logs")
+    # wandb.save(LEGGED_GYM_ENVS_DIR + "/manip_loco/b1z1_config.py", policy="now")
+    # wandb.save(LEGGED_GYM_ENVS_DIR + "/manip_loco/manip_loco.py", policy="now")
+    # wandb.save(LEGGED_GYM_ENVS_DIR + "/manip_loco/manip_loco_config.py", policy="now")
 
     env, env_cfg = task_registry.make_env(name=args.task, args=args)
     ppo_runner, train_cfg, _ = task_registry.make_alg_runner(log_root = log_pth, env=env, name=args.task, args=args)
