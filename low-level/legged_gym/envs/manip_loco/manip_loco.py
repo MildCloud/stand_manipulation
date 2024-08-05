@@ -1806,12 +1806,18 @@ class ManipLoco(LeggedRobot):
         error = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), error)
         return error, error
     
-    def _reward_base_height(self):
+    def _reward_base_height_low(self):
+        # Penalize base height away from target
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1), dim=1)
+        base_height_error_low = torch.abs(base_height - self.cfg.rewards.base_height_target_low)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), base_height_error_low)
+        return rew, base_height
+    
+    def _reward_base_height_high(self):
         # Penalize base height away from target
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1), dim=1)
         base_height_error_high = torch.abs(base_height - self.cfg.rewards.base_height_target_high)
-        base_height_error_low = torch.abs(base_height - self.cfg.rewards.base_height_target_low)
-        rew = torch.where(self.sample_high_goal, base_height_error_high, base_height_error_low)
+        rew = torch.where(self.sample_high_goal, base_height_error_high, torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
         return rew, base_height
     
     def _reward_orientation_walking(self):
