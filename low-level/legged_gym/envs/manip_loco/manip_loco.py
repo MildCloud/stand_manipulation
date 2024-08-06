@@ -1778,7 +1778,7 @@ class ManipLoco(LeggedRobot):
         
         self.last_contact_forces = self.force_sensor_tensor.clone()
         result[self.episode_length_buf<50] = 0.
-        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), result)
         return rew, rew
     
     def _reward_alive(self):
