@@ -154,6 +154,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             work = 0
             energy_square = 0.0
             torques = -2.5e-5 # -1e-5
+            torques = -1e-5 # -1e-5
             stand_still = 1.0 #1.5
             walking_dof = 1.5
             dof_default_pos = 0.0
@@ -171,7 +172,8 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             feet_height = 0.
             ang_vel_xy = -0.2 # -0.1
             dof_acc = -7.5e-7 #-2.5e-7
-            collision = -10.
+            # collision = -10.
+            collision = -5.
             action_rate = -0.015
             dof_pos_limits = -10.0
             hip_pos = -0.3
@@ -217,5 +219,6 @@ class B1Z1RoughCfgPPO(ManipLocoCfgPPO):
         adaptive_arm_gains = B1Z1RoughCfg.control.adaptive_arm_gains
 
     class runner (ManipLocoCfgPPO.runner):
-        max_iterations = 40000
+        # max_iterations = 40000
+        max_iterations = 10000
         experiment_name = 'b1z1_v2'

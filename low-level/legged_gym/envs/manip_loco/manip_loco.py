@@ -600,7 +600,9 @@ class ManipLoco(LeggedRobot):
         self.ee_j_eef = self.jacobian_whole[:, self.gripper_idx, :6, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints]
 
         # box info & target_ee info
-        self.sample_high_goal = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        # self.sample_high_goal = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self.is_init = torch.ones(self.num_envs, device=self.device, dtype=torch.bool)
+        self.sample_high_goal = torch.ones(self.num_envs, device=self.device, dtype=torch.bool)
         self.is_stand = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool).squeeze(-1)
         self.box_pos = self.box_root_state[:, 0:3]
         self.grasp_offset = self.cfg.arm.grasp_offset
@@ -1033,6 +1035,7 @@ class ManipLoco(LeggedRobot):
         arm_base_pos_high = self.root_states[:, :3] + quat_apply(self.base_quat, self.arm_base_offset)
         arm_base_pos = torch.where(self.is_stand[:, None].repeat(1, 3), arm_base_pos_high, arm_base_pos_low)
         ee_goal_local_cart = quat_rotate_inverse(self.base_quat, self.curr_ee_goal_cart_world - arm_base_pos)
+        ee_goal_local_cart = torch.where(self.is_init[:, None].repeat(1, 3), torch.zeros_like(ee_goal_local_cart), ee_goal_local_cart)
         if self.stand_by:
             self.commands[:] = 0.
         self.commands = torch.where(self.sample_high_goal[:, None].repeat(1, 3), torch.zeros_like(self.commands), self.commands)
@@ -1234,6 +1237,7 @@ class ManipLoco(LeggedRobot):
         arm_pos_targets = self.control_ik(dpose) + self.dof_pos[:, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints]
         all_pos_targets = torch.zeros_like(self.dof_pos)
         all_pos_targets[:, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints] = arm_pos_targets
+        all_pos_targets[:, -7:-1] = torch.where(self.is_init[:, None].repeat([1, 6]), self.default_dof_pos[-7:-1], all_pos_targets[:, -7:-1])
         # all_pos_targets[:, -8:-2] = self.default_dof_pos[-8:-2]
         # self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(all_pos_targets))
 
@@ -1353,11 +1357,14 @@ class ManipLoco(LeggedRobot):
             if is_init:
                 # print('is_init')
                 self.is_stand[env_ids] = 0
-                self.sample_high_goal[env_ids] = 0
+                # self.sample_high_goal[env_ids] = 0
+                self.sample_high_goal[env_ids] = 1
                 self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                 self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                 self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
+                self.is_init[env_ids] = 1
             else:
+                self.is_init[env_ids] = 0
                 self.is_stand[env_ids] = euler_from_quat(self.base_quat[env_ids])[1] < -np.pi / 6
                 self.sample_high_goal[env_ids] = 1
                 # self.sample_high_goal[env_ids] = torch.rand(len(env_ids), 1, device=self.device).squeeze(-1) > 0.5
@@ -1538,6 +1545,7 @@ class ManipLoco(LeggedRobot):
     def _reward_tracking_ee_world(self):
         ee_pos_error = torch.sum(torch.abs(self.ee_pos - self.curr_ee_goal_cart_world), dim=1)
         rew = torch.exp(-ee_pos_error/self.cfg.rewards.tracking_ee_sigma * 2)
+        rew = torch.where(self.is_init,  torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
         return rew, ee_pos_error
     
     def _reward_tracking_ee_cart(self):
