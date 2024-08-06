@@ -199,7 +199,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
         class arm_scales:
             arm_termination = None
             tracking_ee_sphere = 0.
-            tracking_ee_world = 0.8
+            tracking_ee_world = 4
             tracking_ee_sphere_walking = 0.0
             tracking_ee_sphere_standing = 0.0
             tracking_ee_cart = None

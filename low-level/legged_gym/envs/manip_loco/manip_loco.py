@@ -600,7 +600,7 @@ class ManipLoco(LeggedRobot):
         self.ee_j_eef = self.jacobian_whole[:, self.gripper_idx, :6, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints]
 
         # box info & target_ee info
-        self.sample_high_goal = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool).squeeze(-1)
+        self.sample_high_goal = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self.is_stand = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool).squeeze(-1)
         self.box_pos = self.box_root_state[:, 0:3]
         self.grasp_offset = self.cfg.arm.grasp_offset
@@ -1669,7 +1669,7 @@ class ManipLoco(LeggedRobot):
     
     def _reward_lin_vel_z(self):
         rew_low = torch.square(self.base_lin_vel[:, 2])
-        rew_high = torch.square(self.base_lin_vel[:, 1])
+        rew_high = torch.square(self.base_lin_vel[:, 0])
         rew = torch.where(self.is_stand, rew_high, rew_low)
         rew = torch.where(self.sample_high_goal, rew_high, rew)
         return rew, rew
@@ -1760,13 +1760,14 @@ class ManipLoco(LeggedRobot):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[~self.get_walking_cmd_mask()] = 0.
-        rew = torch.where(self.is_stand, torch.ones(self.num_envs, device=self.device), rew)
-        rew = torch.where(self.sample_high_goal, torch.ones(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device), rew)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
         # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew, rew
 
     def _reward_hip_pos(self):
         rew = torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[self.hip_indices]), dim=1)
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), rew)
         return rew, rew
 
     def _reward_feet_jerk(self):
@@ -1777,7 +1778,8 @@ class ManipLoco(LeggedRobot):
         
         self.last_contact_forces = self.force_sensor_tensor.clone()
         result[self.episode_length_buf<50] = 0.
-        return result, result
+        rew = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device), rew)
+        return rew, rew
     
     def _reward_alive(self):
         return 1., 1.
@@ -1804,6 +1806,7 @@ class ManipLoco(LeggedRobot):
         roll = self.get_body_orientation()[:, 0]
         error = torch.abs(roll)
         error = torch.where(self.is_stand, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), error)
+        error = torch.where(self.sample_high_goal, torch.zeros(self.num_envs, device=self.device, dtype=torch.float), error)
         return error, error
     
     def _reward_base_height_low(self):
@@ -1815,8 +1818,8 @@ class ManipLoco(LeggedRobot):
     
     def _reward_base_height_high(self):
         # Penalize base height away from target
-        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1), dim=1)
-        base_height_error_high = torch.abs(base_height - self.cfg.rewards.base_height_target_high)
+        base_height = self.root_states[:, 2]
+        base_height_error_high = torch.square(base_height - self.cfg.rewards.base_height_target_high)
         rew = torch.where(self.sample_high_goal, base_height_error_high, torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
         return rew, base_height
     
