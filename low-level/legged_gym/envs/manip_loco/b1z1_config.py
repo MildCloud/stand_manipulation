@@ -171,9 +171,10 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             # feet_height = 1.0
             feet_height = 0.
             ang_vel_xy = -0.2 # -0.1
-            dof_acc = -7.5e-7 #-2.5e-7
+            # dof_acc = -7.5e-7 #-2.5e-7
+            dof_acc = -2.5e-7 #-2.5e-7
             # collision = -10.
-            collision = -5.
+            collision = -2.
             action_rate = -0.015
             dof_pos_limits = -10.0
             hip_pos = -0.3
@@ -186,7 +187,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             orientation_walking = 0.0
             orientation_standing = 0.0
             base_height_low = -5.0
-            base_height_high = -10.0
+            base_height_high = -15.0
             torques_walking = 0.0
             torques_standing = 0.0
             energy_square_walking = 0.0
@@ -194,8 +195,8 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             base_height_walking = 0.0
             base_height_standing = 0.0
             penalty_lin_vel_y = 0.#-10.
-            flfr_footforce = -15
-            stand_up_x = 10
+            flfr_footforce = -25
+            stand_up_x = 15
         base_height_target_low = 0.55
         base_height_target_high = 0.8
         class arm_scales:
