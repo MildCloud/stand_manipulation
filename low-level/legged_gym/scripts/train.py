@@ -28,8 +28,9 @@
 #
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
-import numpy as np
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+import numpy as np
 from datetime import datetime
 
 import isaacgym
