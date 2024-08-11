@@ -187,7 +187,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             orientation_walking = 0.0
             orientation_standing = 0.0
             base_height_low = -5.0
-            base_height_high = -15.0
+            base_height_high = -18.0
             torques_walking = 0.0
             torques_standing = 0.0
             energy_square_walking = 0.0
@@ -221,5 +221,5 @@ class B1Z1RoughCfgPPO(ManipLocoCfgPPO):
 
     class runner (ManipLocoCfgPPO.runner):
         # max_iterations = 40000
-        max_iterations = 10000
+        max_iterations = 19000
         experiment_name = 'b1z1_v2'

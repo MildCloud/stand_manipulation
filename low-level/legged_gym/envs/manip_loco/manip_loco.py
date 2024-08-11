@@ -1216,7 +1216,7 @@ class ManipLoco(LeggedRobot):
         if self.action_delay != -1:
             self.action_history_buf = torch.cat([self.action_history_buf[:, 1:], actions[:, None, :]], dim=1)
             # actions = self.action_history_buf[:, -self.action_delay - 1] # delay for 1/50=20ms
-        if self.global_steps < 10000 * 24:
+        if self.global_steps < 20000 * 24:
             actions = self.action_history_buf[:, -1]
         else:
             actions = self.action_history_buf[:, -2]
