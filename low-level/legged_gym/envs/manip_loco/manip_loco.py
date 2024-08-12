@@ -89,7 +89,8 @@ class ManipLoco(LeggedRobot):
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.
             Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
-        self.reward_scales = {k:v for k,v in self.reward_scales.items() if v is not None and v != 0}
+        self.reward_scales = {k:v * self.dt for k,v in self.reward_scales.items() if v is not None and v != 0}
+        print('reward_scales', self.reward_scales)
 
         # prepare list of functions
         self.reward_functions = []
@@ -101,7 +102,8 @@ class ManipLoco(LeggedRobot):
             name = '_reward_' + name
             self.reward_functions.append(getattr(self, name))
 
-        self.arm_reward_scales = {k:v for k,v in self.arm_reward_scales.items() if v is not None and v != 0}
+        self.arm_reward_scales = {k:v * self.dt for k,v in self.arm_reward_scales.items() if v is not None and v != 0}
+        print('arm_scales', self.arm_reward_scales)
 
         # prepare list of functions
         self.arm_reward_functions = []
@@ -1042,7 +1044,9 @@ class ManipLoco(LeggedRobot):
         self.commands = torch.where(self.is_stand[:, None].repeat(1, 3), torch.zeros_like(self.commands), self.commands)
         if self.vel_obs:
             obs_buf = torch.cat((       self.get_body_orientation(),  # dim 2
+                                        self.base_lin_vel * self.obs_scales.lin_vel,
                                         self.base_ang_vel * self.obs_scales.ang_vel,  # dim 3
+                                        self.projected_gravity,
                                         self.reindex_all((self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos)[:, :-self.cfg.env.num_gripper_joints],  # dim 18
                                         self.reindex_all(self.dof_vel * self.obs_scales.dof_vel)[:, :-self.cfg.env.num_gripper_joints],  # dim 18
                                         self.reindex_all(self.action_history_buf[:, -1])[:, :12],  # dim 12
@@ -1281,7 +1285,8 @@ class ManipLoco(LeggedRobot):
         Returns:
             [torch.Tensor]: Torques sent to the simulation
         """
-        actions_scaled = actions * self.motor_strength * self.action_scale
+        # actions_scaled = actions * self.motor_strength * self.action_scale
+        actions_scaled = actions * 0.25
 
         default_torques = self.p_gains * (actions_scaled + self.default_dof_pos_wo_gripper - self.dof_pos_wo_gripper) - self.d_gains * self.dof_vel_wo_gripper
         default_torques[:, -6:] = 0

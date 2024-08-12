@@ -89,7 +89,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
         num_gripper_joints = 1 # 2 for two finger gripper
         num_priv = 5 + 1 + 12
         history_len = 10
-        num_proprio = 2 + 3 + 18 + 18 + 12 + 4 + 3 + 3 + 3
+        num_proprio = 2 + 3 + 3 + 3 + 18 + 18 + 12 + 4 + 3 + 3 + 3
         num_observations = num_proprio * (history_len+1) + num_priv
         action_delay = 3 # Not used, assigned in code
         observe_gait_commands = False
@@ -146,22 +146,23 @@ class B1Z1RoughCfg( ManipLocoCfg ):
         class scales ( ManipLocoCfg.rewards.scales ):
             tracking_contacts_shaped_force = -2.0 # Only works when `observing_gait_commands` is true
             tracking_contacts_shaped_vel = -2.0 # Only works when `observing_gait_commands` is true
-            tracking_lin_vel_max = 2.0 # 1.5
+            tracking_lin_vel_max = 0.0 # 1.5
             tracking_lin_vel_x_l1 = 0.
             tracking_lin_vel_x_exp = 0
-            tracking_ang_vel = 0.5 # just for yaw
-            delta_torques = -1.0e-7/4.0
+            tracking_ang_vel = 0.0 # just for yaw
+            # delta_torques = -1.0e-7/4.0
+            delta_torques = -0.0
             work = 0
             energy_square = 0.0
-            torques = -2.5e-5 # -1e-5
-            torques = -1e-5 # -1e-5
-            stand_still = 1.0 #1.5
-            walking_dof = 1.5
+            # torques = -2.5e-5 # -1e-5
+            torques = 0 # -1e-5
+            stand_still = 0.0 #1.5
+            walking_dof = 0
             dof_default_pos = 0.0
             dof_error = 0.0 # -0.06 # -0.04
-            alive = 1.0
-            lin_vel_z = -1.5
-            roll = -2.0
+            alive = 0.0
+            lin_vel_z = -2.0
+            roll = -0.0
             
             # tracking_ang_pitch_vel = 0.5 # New reward, only useful when pitch_control = True
 
@@ -170,15 +171,15 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             feet_air_time = 0.
             # feet_height = 1.0
             feet_height = 0.
-            ang_vel_xy = -0.2 # -0.1
+            ang_vel_xy = -0.05 # -0.1
             # dof_acc = -7.5e-7 #-2.5e-7
             dof_acc = -2.5e-7 #-2.5e-7
             # collision = -10.
-            collision = -2.
-            action_rate = -0.015
+            collision = -1.
+            action_rate = -0.01
             dof_pos_limits = -10.0
-            hip_pos = -0.3
-            feet_jerk = -0.0002
+            hip_pos = -0.0
+            feet_jerk = -0.0
             # feet_drag = -0.08
             feet_drag = 0.
             # feet_contact_forces = -0.001
@@ -186,8 +187,8 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             orientation = 0.0
             orientation_walking = 0.0
             orientation_standing = 0.0
-            base_height_low = -5.0
-            base_height_high = -18.0
+            base_height_low = 0
+            base_height_high = -1
             torques_walking = 0.0
             torques_standing = 0.0
             energy_square_walking = 0.0
@@ -195,14 +196,14 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             base_height_walking = 0.0
             base_height_standing = 0.0
             penalty_lin_vel_y = 0.#-10.
-            flfr_footforce = -25
-            stand_up_x = 12
+            flfr_footforce = -5
+            stand_up_x = 3
         base_height_target_low = 0.55
         base_height_target_high = 0.8
         class arm_scales:
             arm_termination = None
             tracking_ee_sphere = 0.
-            tracking_ee_world = 4
+            tracking_ee_world = 5
             tracking_ee_sphere_walking = 0.0
             tracking_ee_sphere_standing = 0.0
             tracking_ee_cart = None
