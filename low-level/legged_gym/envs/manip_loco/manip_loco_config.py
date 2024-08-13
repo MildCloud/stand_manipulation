@@ -332,7 +332,8 @@ class ManipLocoCfgPPO(LeggedRobotCfgPPO):
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
         output_tanh = False
 
-        leg_control_head_hidden_dims = [128, 128]
+        # leg_control_head_hidden_dims = [128, 128]
+        leg_control_head_hidden_dims = [512, 256]
         arm_control_head_hidden_dims = [128, 128]
 
         priv_encoder_dims = [64, 20]
