@@ -1970,3 +1970,25 @@ class ManipLoco(LeggedRobot):
                           torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
         rew = torch.where(self.sample_high_goal, rew, torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
         return mask*rew, mask*rew
+    
+    def _reward_stand_front_feet_shrink(self):
+        front_feet_dofs = self.dof_pos_wo_gripper[:, :6]
+        front_shrink_dofs = torch.tensor([[0.0, 1.6, -2.6, 0.0, 1.6, -2.6]], device=self.device, dtype=torch.float)
+        front_shrink_dofs = front_shrink_dofs.repeat(self.num_envs, 1)
+        shrink_error = torch.sum(torch.square(front_feet_dofs - front_shrink_dofs), dim=1)
+        torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        rew = torch.where(self.is_stand, 
+                          shrink_error, 
+                          torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
+        return rew, shrink_error
+    
+    def _reward_stand_rear_feet_shrink(self):
+        rear_feet_dofs = self.dof_pos_wo_gripper[:, 6:12]
+        rear_shrink_dofs = torch.tensor([[0.3, 1.8, -1.8, -0.3, 1.8, -1.8]], device=self.device, dtype=torch.float)
+        rear_shrink_dofs = rear_shrink_dofs.repeat(self.num_envs, 1)
+        shrink_error = torch.sum(torch.square(rear_feet_dofs - rear_shrink_dofs), dim=1)
+        torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        rew = torch.where(self.is_stand, 
+                          shrink_error, 
+                          torch.zeros(self.num_envs, device=self.device, dtype=torch.float))
+        return rew, shrink_error

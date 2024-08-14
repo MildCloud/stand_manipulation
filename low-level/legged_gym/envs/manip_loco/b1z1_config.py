@@ -196,6 +196,8 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             base_height_standing = 0.0
             penalty_lin_vel_y = 0.#-10.
             flfr_footforce = -25
+            stand_front_feet_shrink = -1
+            stand_rear_feet_shrink = -1
             stand_up_x = 12
         base_height_target_low = 0.55
         base_height_target_high = 0.8
