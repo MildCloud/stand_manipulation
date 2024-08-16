@@ -197,7 +197,7 @@ class B1Z1RoughCfg( ManipLocoCfg ):
             penalty_lin_vel_y = 0.#-10.
             flfr_footforce = -25
             stand_front_feet_shrink = -1
-            stand_rear_feet_shrink = -1
+            stand_rear_feet_shrink = -1.5
             stand_up_x = 12
         base_height_target_low = 0.55
         base_height_target_high = 0.8
@@ -222,6 +222,6 @@ class B1Z1RoughCfgPPO(ManipLocoCfgPPO):
         adaptive_arm_gains = B1Z1RoughCfg.control.adaptive_arm_gains
 
     class runner (ManipLocoCfgPPO.runner):
-        # max_iterations = 40000
-        max_iterations = 19000
+        max_iterations = 40000
+        # max_iterations = 19000
         experiment_name = 'b1z1_v2'
